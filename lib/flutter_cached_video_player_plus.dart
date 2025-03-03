@@ -9,13 +9,18 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_cached_video_player_plus/flutter_cached_video_player_plus.dart';
 import 'package:flutter_cached_video_player_plus/src/video_player_platform_interface/method_channel_video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
-import 'flutter_cached_video_player_plus.dart';
-
 export 'package:video_player_platform_interface/video_player_platform_interface.dart'
-    show DataSourceType, DurationRange, VideoFormat, VideoPlayerOptions;
+    show
+        DataSourceType,
+        DurationRange,
+        VideoFormat,
+        VideoPlayerOptions,
+        VideoPlayerWebOptions,
+        VideoPlayerWebOptionsControls;
 
 export 'src/closed_caption_file.dart';
 export 'src/video_player_platform_interface/video_player_platform_config.dart';
@@ -46,12 +51,12 @@ void initDefaultVideoPlayerPlatform() {
 }
 
 /// The duration, current position, buffering state, error state and settings
-/// of a [CachedVideoPlayerController].
+/// of a [VideoPlayerController].
 @immutable
-class CachedVideoPlayerValue {
+class VideoPlayerValue {
   /// Constructs a video with the given values. Only [duration] is required. The
   /// rest will initialize with default values when unset.
-  const CachedVideoPlayerValue({
+  const VideoPlayerValue({
     required this.duration,
     this.size = Size.zero,
     this.position = Duration.zero,
@@ -70,11 +75,11 @@ class CachedVideoPlayerValue {
   });
 
   /// Returns an instance for a video that hasn't been loaded.
-  const CachedVideoPlayerValue.uninitialized()
+  const VideoPlayerValue.uninitialized()
       : this(duration: Duration.zero, isInitialized: false);
 
   /// Returns an instance with the given [errorDescription].
-  const CachedVideoPlayerValue.erroneous(String errorDescription)
+  const VideoPlayerValue.erroneous(String errorDescription)
       : this(
             duration: Duration.zero,
             isInitialized: false,
@@ -164,7 +169,7 @@ class CachedVideoPlayerValue {
 
   /// Returns a new instance that has the same values as this current instance,
   /// except for any overrides passed in as arguments to [copyWith].
-  CachedVideoPlayerValue copyWith({
+  VideoPlayerValue copyWith({
     Duration? duration,
     Size? size,
     Duration? position,
@@ -181,7 +186,7 @@ class CachedVideoPlayerValue {
     String? errorDescription = _defaultErrorDescription,
     bool? isCompleted,
   }) {
-    return CachedVideoPlayerValue(
+    return VideoPlayerValue(
       duration: duration ?? this.duration,
       size: size ?? this.size,
       position: position ?? this.position,
@@ -224,7 +229,7 @@ class CachedVideoPlayerValue {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CachedVideoPlayerValue &&
+      other is VideoPlayerValue &&
           runtimeType == other.runtimeType &&
           duration == other.duration &&
           position == other.position &&
@@ -267,19 +272,18 @@ class CachedVideoPlayerValue {
 ///
 /// Instances must be initialized with initialize.
 ///
-/// The video is displayed in a Flutter app by creating a [CachedVideoPlayer] widget.
+/// The video is displayed in a Flutter app by creating a [VideoPlayer] widget.
 ///
 /// To reclaim the resources used by the player call [dispose].
 ///
 /// After [dispose] all further calls are ignored.
-class CachedVideoPlayerController
-    extends ValueNotifier<CachedVideoPlayerValue> {
-  /// Constructs a [CachedVideoPlayerController] playing a video from an asset.
+class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
+  /// Constructs a [VideoPlayerController] playing a video from an asset.
   ///
   /// The name of the asset is given by the [dataSource] argument and must not be
   /// null. The [package] argument must be non-null when the asset comes from a
   /// package and null otherwise.
-  CachedVideoPlayerController.asset(this.dataSource,
+  VideoPlayerController.asset(this.dataSource,
       {this.package,
       Future<ClosedCaptionFile>? closedCaptionFile,
       this.videoPlayerOptions})
@@ -287,9 +291,9 @@ class CachedVideoPlayerController
         dataSourceType = DataSourceType.asset,
         formatHint = null,
         httpHeaders = const <String, String>{},
-        super(const CachedVideoPlayerValue(duration: Duration.zero));
+        super(const VideoPlayerValue(duration: Duration.zero));
 
-  /// Constructs a [CachedVideoPlayerController] playing a network video.
+  /// Constructs a [VideoPlayerController] playing a network video.
   ///
   /// The URI for the video is given by the [dataSource] argument.
   ///
@@ -299,7 +303,7 @@ class CachedVideoPlayerController
   /// [httpHeaders] option allows to specify HTTP headers
   /// for the request to the [dataSource].
   @Deprecated('Use VideoPlayerController.networkUrl instead')
-  CachedVideoPlayerController.network(
+  VideoPlayerController.network(
     this.dataSource, {
     this.formatHint,
     Future<ClosedCaptionFile>? closedCaptionFile,
@@ -308,9 +312,9 @@ class CachedVideoPlayerController
   })  : _closedCaptionFileFuture = closedCaptionFile,
         dataSourceType = DataSourceType.network,
         package = null,
-        super(const CachedVideoPlayerValue(duration: Duration.zero));
+        super(const VideoPlayerValue(duration: Duration.zero));
 
-  /// Constructs a [CachedVideoPlayerController] playing a network video.
+  /// Constructs a [VideoPlayerController] playing a network video.
   ///
   /// The URI for the video is given by the [dataSource] argument.
   ///
@@ -319,7 +323,7 @@ class CachedVideoPlayerController
   ///
   /// [httpHeaders] option allows to specify HTTP headers
   /// for the request to the [dataSource].
-  CachedVideoPlayerController.networkUrl(
+  VideoPlayerController.networkUrl(
     Uri url, {
     this.formatHint,
     Future<ClosedCaptionFile>? closedCaptionFile,
@@ -329,13 +333,13 @@ class CachedVideoPlayerController
         dataSource = url.toString(),
         dataSourceType = DataSourceType.network,
         package = null,
-        super(const CachedVideoPlayerValue(duration: Duration.zero));
+        super(const VideoPlayerValue(duration: Duration.zero));
 
-  /// Constructs a [CachedVideoPlayerController] playing a video from a file.
+  /// Constructs a [VideoPlayerController] playing a video from a file.
   ///
   /// This will load the file from a file:// URI constructed from [file]'s path.
   /// [httpHeaders] option allows to specify HTTP headers, mainly used for hls files like (m3u8).
-  CachedVideoPlayerController.file(File file,
+  VideoPlayerController.file(File file,
       {Future<ClosedCaptionFile>? closedCaptionFile,
       this.videoPlayerOptions,
       this.httpHeaders = const <String, String>{}})
@@ -344,13 +348,13 @@ class CachedVideoPlayerController
         dataSourceType = DataSourceType.file,
         package = null,
         formatHint = null,
-        super(const CachedVideoPlayerValue(duration: Duration.zero));
+        super(const VideoPlayerValue(duration: Duration.zero));
 
-  /// Constructs a [CachedVideoPlayerController] playing a video from a contentUri.
+  /// Constructs a [VideoPlayerController] playing a video from a contentUri.
   ///
   /// This will load the video from the input content-URI.
   /// This is supported on Android only.
-  CachedVideoPlayerController.contentUri(Uri contentUri,
+  VideoPlayerController.contentUri(Uri contentUri,
       {Future<ClosedCaptionFile>? closedCaptionFile, this.videoPlayerOptions})
       : assert(defaultTargetPlatform == TargetPlatform.android,
             'VideoPlayerController.contentUri is only supported on Android.'),
@@ -360,7 +364,7 @@ class CachedVideoPlayerController
         package = null,
         formatHint = null,
         httpHeaders = const <String, String>{},
-        super(const CachedVideoPlayerValue(duration: Duration.zero));
+        super(const VideoPlayerValue(duration: Duration.zero));
 
   /// The URI to the video file. This will be in different formats depending on
   /// the [DataSourceType] of the original video.
@@ -375,7 +379,7 @@ class CachedVideoPlayerController
   /// detection with whatever is set here.
   final VideoFormat? formatHint;
 
-  /// Describes the type of data source this [CachedVideoPlayerController]
+  /// Describes the type of data source this [VideoPlayerController]
   /// is constructed with.
   final DataSourceType dataSourceType;
 
@@ -451,6 +455,14 @@ class CachedVideoPlayerController
     _creatingCompleter!.complete(null);
     final Completer<void> initializingCompleter = Completer<void>();
 
+    // Apply the web-specific options
+    if (kIsWeb && videoPlayerOptions?.webOptions != null) {
+      await _videoPlayerPlatform.setWebOptions(
+        _textureId,
+        videoPlayerOptions!.webOptions!,
+      );
+    }
+
     void eventListener(VideoEvent event) {
       if (_isDisposed) {
         return;
@@ -466,6 +478,16 @@ class CachedVideoPlayerController
             errorDescription: null,
             isCompleted: false,
           );
+          assert(
+            !initializingCompleter.isCompleted,
+            'VideoPlayerController already initialized. This is typically a '
+            'sign that an implementation of the VideoPlayerPlatform '
+            '(${_videoPlayerPlatform.runtimeType}) has a bug and is sending '
+            'more than one initialized event per instance.',
+          );
+          if (initializingCompleter.isCompleted) {
+            throw StateError('VideoPlayerController already initialized');
+          }
           initializingCompleter.complete(null);
           _applyLooping();
           _applyVolume();
@@ -501,7 +523,7 @@ class CachedVideoPlayerController
 
     void errorListener(Object obj) {
       final PlatformException e = obj as PlatformException;
-      value = CachedVideoPlayerValue.erroneous(e.message!);
+      value = VideoPlayerValue.erroneous(e.message!);
       _timer?.cancel();
       if (!initializingCompleter.isCompleted) {
         initializingCompleter.completeError(obj);
@@ -550,7 +572,7 @@ class CachedVideoPlayerController
   }
 
   /// Sets whether or not the video should loop after playing once. See also
-  /// [CachedVideoPlayerValue.isLooping].
+  /// [VideoPlayerValue.isLooping].
   Future<void> setLooping(bool looping) async {
     value = value.copyWith(isLooping: looping);
     await _applyLooping();
@@ -758,6 +780,12 @@ class CachedVideoPlayerController
   }
 
   void _updatePosition(Duration position) {
+    // The underlying native implementation on some platforms sometimes reports
+    // a position slightly past the reported max duration. Clamp to the duration
+    // to insulate clients from this behavior.
+    if (position > value.duration) {
+      position = value.duration;
+    }
     value = value.copyWith(
       position: position,
       caption: _getCaptionAt(position),
@@ -781,10 +809,10 @@ class _VideoAppLifeCycleObserver extends Object with WidgetsBindingObserver {
   _VideoAppLifeCycleObserver(this._controller);
 
   bool _wasPlayingBeforePause = false;
-  final CachedVideoPlayerController _controller;
+  final VideoPlayerController _controller;
 
   void initialize() {
-    _ambiguate(WidgetsBinding.instance)!.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -800,25 +828,25 @@ class _VideoAppLifeCycleObserver extends Object with WidgetsBindingObserver {
   }
 
   void dispose() {
-    _ambiguate(WidgetsBinding.instance)!.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
   }
 }
 
 /// Widget that displays the video controlled by [controller].
-class CachedVideoPlayer extends StatefulWidget {
+class VideoPlayer extends StatefulWidget {
   /// Uses the given [controller] for all video rendered in this widget.
-  const CachedVideoPlayer(this.controller, {super.key});
+  const VideoPlayer(this.controller, {super.key});
 
-  /// The [CachedVideoPlayerController] responsible for the video being rendered in
+  /// The [VideoPlayerController] responsible for the video being rendered in
   /// this widget.
-  final CachedVideoPlayerController controller;
+  final VideoPlayerController controller;
 
   @override
-  State<CachedVideoPlayer> createState() => _CachedVideoPlayerState();
+  State<VideoPlayer> createState() => _VideoPlayerState();
 }
 
-class _CachedVideoPlayerState extends State<CachedVideoPlayer> {
-  _CachedVideoPlayerState() {
+class _VideoPlayerState extends State<VideoPlayer> {
+  _VideoPlayerState() {
     _listener = () {
       final int newTextureId = widget.controller.textureId;
       if (newTextureId != _textureId) {
@@ -843,7 +871,7 @@ class _CachedVideoPlayerState extends State<CachedVideoPlayer> {
   }
 
   @override
-  void didUpdateWidget(CachedVideoPlayer oldWidget) {
+  void didUpdateWidget(VideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
     oldWidget.controller.removeListener(_listener);
     _textureId = widget.controller.textureId;
@@ -858,7 +886,7 @@ class _CachedVideoPlayerState extends State<CachedVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return _textureId == CachedVideoPlayerController.kUninitializedTextureId
+    return _textureId == VideoPlayerController.kUninitializedTextureId
         ? Container()
         : _VideoPlayerWithRotation(
             rotation: widget.controller.value.rotationCorrection,
@@ -921,11 +949,11 @@ class VideoProgressColors {
   final Color backgroundColor;
 }
 
-/// A scrubber to control [CachedVideoPlayerController]s
+/// A scrubber to control [VideoPlayerController]s
 class VideoScrubber extends StatefulWidget {
   /// Create a [VideoScrubber] handler with the given [child].
   ///
-  /// [controller] is the [CachedVideoPlayerController] that will be controlled by
+  /// [controller] is the [VideoPlayerController] that will be controlled by
   /// this scrubber.
   const VideoScrubber({
     super.key,
@@ -936,8 +964,8 @@ class VideoScrubber extends StatefulWidget {
   /// The widget that will be displayed inside the gesture detector.
   final Widget child;
 
-  /// The [CachedVideoPlayerController] that will be controlled by this scrubber.
-  final CachedVideoPlayerController controller;
+  /// The [VideoPlayerController] that will be controlled by this scrubber.
+  final VideoPlayerController controller;
 
   @override
   State<VideoScrubber> createState() => _VideoScrubberState();
@@ -946,7 +974,7 @@ class VideoScrubber extends StatefulWidget {
 class _VideoScrubberState extends State<VideoScrubber> {
   bool _controllerWasPlaying = false;
 
-  CachedVideoPlayerController get controller => widget.controller;
+  VideoPlayerController get controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
@@ -1014,9 +1042,9 @@ class VideoProgressIndicator extends StatefulWidget {
     this.padding = const EdgeInsets.only(top: 5.0),
   });
 
-  /// The [CachedVideoPlayerController] that actually associates a video with this
+  /// The [VideoPlayerController] that actually associates a video with this
   /// widget.
-  final CachedVideoPlayerController controller;
+  final VideoPlayerController controller;
 
   /// The default colors used throughout the indicator.
   ///
@@ -1051,7 +1079,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
 
   late VoidCallback listener;
 
-  CachedVideoPlayerController get controller => widget.controller;
+  VideoPlayerController get controller => widget.controller;
 
   VideoProgressColors get colors => widget.colors;
 
@@ -1126,7 +1154,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
 /// caption.
 ///
 /// Note: in order to have closed captions, you need to specify a
-/// [CachedVideoPlayerController.closedCaptionFile].
+/// [VideoPlayerController.closedCaptionFile].
 ///
 /// Usage:
 ///
@@ -1138,7 +1166,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
 /// ```
 class ClosedCaption extends StatelessWidget {
   /// Creates a a new closed caption, designed to be used with
-  /// [CachedVideoPlayerValue.caption].
+  /// [VideoPlayerValue.caption].
   ///
   /// If [text] is null or empty, nothing will be displayed.
   const ClosedCaption({super.key, this.text, this.textStyle});
@@ -1185,9 +1213,3 @@ class ClosedCaption extends StatelessWidget {
     );
   }
 }
-
-/// This allows a value of type T or T? to be treated as a value of type T?.
-///
-/// We use this so that APIs that have become non-nullable can still be used
-/// with `!` and `?` on the stable branch.
-T? _ambiguate<T>(T? value) => value;

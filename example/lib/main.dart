@@ -49,10 +49,10 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late CachedVideoPlayerController controller;
+  late VideoPlayerController controller;
   @override
   void initState() {
-    controller = CachedVideoPlayerController.networkUrl(
+    controller = VideoPlayerController.networkUrl(
         "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
             .toUri);
     controller.initialize().then((value) {
@@ -80,7 +80,7 @@ class _MyHomePageState extends State<MyHomePage> {
           child: controller.value.isInitialized
               ? AspectRatio(
                   aspectRatio: controller.value.aspectRatio,
-                  child: CachedVideoPlayer(controller))
+                  child: VideoPlayer(controller))
               : const CircularProgressIndicator()), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
